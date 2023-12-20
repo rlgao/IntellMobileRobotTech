@@ -1,0 +1,17 @@
+<launch>
+  <!-- Start the navigation stack -->
+
+  <!-- Map server to read the given global map -->
+  <arg name="map_cfg" default="$(find jackal_helper)/configs/map.yaml"/>
+  <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_cfg)"/>
+
+  <!-- Global planner -->
+  <node pkg="jackal_helper" type="global_planner.py" name="global_planner" ns="my_planner"  output="screen"/>
+
+  <!-- Local planner -->
+  <!-- <node pkg="jackal_helper" type="local_planner.py"  name="local_planner"  ns="my_planner"  output="screen"/> -->
+
+  <!-- RViz -->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find jackal_helper)/launch/viz.rviz" />
+
+</launch>
