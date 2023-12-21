@@ -9,7 +9,7 @@
   <node pkg="jackal_helper" type="global_planner.py" name="global_planner" ns="my_planner"  output="screen"/>
 
   <!-- Local planner -->
-  <!-- <node pkg="jackal_helper" type="local_planner.py"  name="local_planner"  ns="my_planner"  output="screen"/> -->
+  <node pkg="jackal_helper" type="local_planner.py"  name="local_planner"  ns="my_planner"  output="screen"/>
 
   <!-- RViz -->
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find jackal_helper)/launch/viz.rviz" />

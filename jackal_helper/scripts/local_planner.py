@@ -5,23 +5,25 @@ import numpy as np
 import rospy
 import tf
 from nav_msgs.msg import Path
-from geometry_msgs.msg import PoseStamped,Twist
+from geometry_msgs.msg import PoseStamped, Twist, Quaternion
 from sensor_msgs.msg import LaserScan
 
-# ============================
+# ========================================================
 # import dwa
 import dwa_from_srtp as dwa
-# ============================
+# ========================================================
 
-from threading import Lock,Thread
+from threading import Lock, Thread
 import time
 import math
 
+from my_gazebo_simulation import MyGazeboSimulation
 
-ROBOT_TF_NAME = "/robot_base"  # "/robot_tf"
+
+# ROBOT_TF_NAME = "/robot_base"  # "/robot_tf"
 
 
-def limitVal(minV,maxV,v):
+def limitVal(minV, maxV, v):
     if v < minV:
         return minV
     if v > maxV:
@@ -31,7 +33,9 @@ def limitVal(minV,maxV,v):
 
 class LocalPlanner:
     def __init__(self):
-        self.arrive = 0.2  #0.15  #0.1
+        self.gazebo_sim = MyGazeboSimulation()
+
+        self.arrive = 0.1
         self.x = 0.0
         self.y = 0.0
         self.yaw = 0.0
@@ -39,7 +43,7 @@ class LocalPlanner:
         self.vw = 0.0
 
         # init plan_config for once
-        self.laser_lock = Lock()
+        # self.laser_lock = Lock()
         self.plan_config = dwa.Config()
         self.plan_config.robot_type = dwa.RobotType.rectangle
         self.dwa = dwa.DWA(self.plan_config)
@@ -52,131 +56,158 @@ class LocalPlanner:
         self.path = Path()
         self.tf = tf.TransformListener()
 
-
         # ==============================================
         self.path_sub = rospy.Subscriber('/my_planner/global_path', Path, self.pathCallback)
-        self.laser_sub = rospy.Subscriber('/my_planner/laser/scan', LaserScan, self.laserCallback)
+        # self.laser_sub = rospy.Subscriber('/front/scan', LaserScan, self.laserCallback)
 
-        # self.vel_pub = rospy.Publisher('/my_planner/velocity', Twist, queue_size=1)
-        self.vel_pub = rospy.Publisher('/my_planner/velocity', Twist, queue_size=1)
-        self.midpose_pub = rospy.Publisher('/my_planner/mid_goal', PoseStamped, queue_size=1)
+        # self.vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
+        self.midgoal_pub = rospy.Publisher('/my_planner/mid_goal', PoseStamped, queue_size=1)
         # ==============================================
 
-
         self.planner_thread = None
-        self.ob = None
 
+        self.received_global_path = False
         self.need_exit = False
-        pass
+
+        self.plan_ob = None
 
 
     def updateGlobalPose(self):
-        try:
-            self.tf.waitForTransform("/map", ROBOT_TF_NAME, rospy.Time(), rospy.Duration(4.0))
-            (self.trans,self.rot) = self.tf.lookupTransform('/map',ROBOT_TF_NAME,rospy.Time(0))
-        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-            print("get tf error!")
+        # try:
+        #     self.tf.waitForTransform("/map", ROBOT_TF_NAME, rospy.Time(), rospy.Duration(4.0))
+        #     (self.trans, self.rot) = self.tf.lookupTransform('/map',ROBOT_TF_NAME,rospy.Time(0))
+        # except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+        #     print("get tf error!")
+        
 
-        euler = tf.transformations.euler_from_quaternion(self.rot)
-        roll,pitch,yaw = euler[0],euler[1],euler[2]
+        # ------------------------------------
+        # update self.x/y/yaw
+        pos = self.gazebo_sim.get_model_state().pose.position
+        ori = self.gazebo_sim.get_model_state().pose.orientation
+        ori_list = [ori.x, ori.y, ori.z, ori.w]
+        euler = tf.transformations.euler_from_quaternion(ori_list)
+        roll, pitch, yaw = euler[0], euler[1], euler[2]
 
-        self.x = self.trans[0]
-        self.y = self.trans[1]
+        self.x = pos.x
+        self.y = pos.y
         self.yaw = yaw
+        # ------------------------------------
 
-
+        # ------------------------------------
+        # update self.goal_index
         ind = self.goal_index
         # self.goal_index = len(self.path.poses) - 1  ################
         while ind < len(self.path.poses):
             p = self.path.poses[ind].pose.position
             dis = math.hypot(p.x - self.x, p.y - self.y)
-            # print('mdgb;; ',len(self.path.poses),ind,dis)
-            
-            # --------------------------------------------
-            # if dis < self.threshold:
-            #     self.goal_index = ind           
             if dis < self.threshold:
                 self.goal_index = ind + 1
-            # --------------------------------------------
 
             ind += 1
 
-        # --------------------------------------------
         if self.goal_index > len(self.path.poses) - 1:
             self.goal_index = len(self.path.poses) - 1
-        # --------------------------------------------
+        # ------------------------------------
 
         goal = self.path.poses[self.goal_index]
-        self.midpose_pub.publish(goal)
+        self.midgoal_pub.publish(goal)
 
         # print('len(self.path.poses) = ' + str(len(self.path.poses)))
         # print('self.goal_index = ' + str(self.goal_index))
         # print('goal pos = [' + str(goal.pose.position.x) + ', ' + str(goal.pose.position.y) + ']')  #################
         
+        # ------------------------------------
         # local goal
-        lgoal = self.tf.transformPose(ROBOT_TF_NAME, goal)  ##################
-        self.plan_goal = np.array([lgoal.pose.position.x, lgoal.pose.position.y])
+        # lgoal = self.tf.transformPose(ROBOT_TF_NAME, goal)  ##################
+        # self.plan_goal = np.array([lgoal.pose.position.x, lgoal.pose.position.y])
+        goal_x = goal.pose.position.x
+        goal_y = goal.pose.position.y
+        lgoal_x =  (goal_x - self.x) * math.cos(self.yaw) + (goal_y - self.y) * math.sin(self.yaw)
+        lgoal_y = -(goal_x - self.x) * math.sin(self.yaw) + (goal_y - self.y) * math.cos(self.yaw)
+        self.plan_goal = np.array([lgoal_x, lgoal_y])
+        # ------------------------------------
 
         self.goal_dis = math.hypot(self.x - self.path.poses[-1].pose.position.x,
                                    self.y - self.path.poses[-1].pose.position.y)
 
 
-    def laserCallback(self,msg):
-        # print("get laser msg!!!!",msg)
-        self.laser_lock.acquire()
+    # def laserCallback(self,msg):
+    #     # print("get laser msg!!!!",msg)
+    #     self.laser_lock.acquire()
 
-        # preprocess
-        # self.ob = [[100,100]]
-        self.ob = []   ########################
+    #     # preprocess
+    #     # self.ob = [[100,100]]
+    #     self.ob = []   ########################
 
-        angle_min = msg.angle_min
-        angle_increment = msg.angle_increment
-        for i in range(len(msg.ranges)):
-            a = angle_min + angle_increment*i
-            r = msg.ranges[i]
+    #     angle_min = msg.angle_min
+    #     angle_increment = msg.angle_increment
+    #     for i in range(len(msg.ranges)):
+    #         a = angle_min + angle_increment*i
+    #         r = msg.ranges[i]
 
-            # if r < self.threshold * 2:  ########################
-            if r < self.threshold * 2:  ########################
-                self.ob.append([math.cos(a)*r, math.sin(a)*r])
+    #         # if r < self.threshold * 2:  ########################
+    #         if r < self.threshold * 2:  ########################
+    #             self.ob.append([math.cos(a)*r, math.sin(a)*r])
 
-        self.laser_lock.release()
-        pass
+    #     self.laser_lock.release()
+    #     pass
+
 
     def updateObstacle(self):
-        self.laser_lock.acquire()
-        self.plan_ob = []
-        self.plan_ob = np.array(self.ob) if self.ob is not None else None
-        self.laser_lock.release()
+        # self.laser_lock.acquire()
+
+        laser_data = self.gazebo_sim.get_laser_scan()  # LaserScan
+
+        ob = []
+        angle_min = laser_data.angle_min
+        angle_increment = laser_data.angle_increment
+        for i in range(len(laser_data.ranges)):
+            a = angle_min + angle_increment * i
+            r = laser_data.ranges[i]
+
+            ########################        
+            if r < self.threshold:  
+                ob.append([math.cos(a) * r, math.sin(a) * r])
+
+
+        self.plan_ob = np.array(ob) if ob is not None else None
+
+        # self.laser_lock.release()
         pass
 
-    def pathCallback(self,msg):
-        self.need_exit = True
-        time.sleep(0.1)
-        self.path = msg
-        self.planner_thread = Thread(target=self.planThreadFunc)
-        self.initPlanning()
-        self.planner_thread.start()
+
+    def pathCallback(self, msg):
+        if not self.received_global_path:
+            self.received_global_path = True
+
+            # self.need_exit = True
+            time.sleep(0.1)
+            self.path = msg
+            self.planner_thread = Thread(target=self.planThreadFunc)
+            self.initPlanning()
+            self.planner_thread.start()
+
 
     def initPlanning(self):
         self.goal_index = 0
         # self.vx = 0.0
         # self.vw = 0.0
-        self.dis = 99999
+        # self.dis = 99999
         self.updateGlobalPose()
         cx = []
         cy = []
         for pose in self.path.poses:
             cx.append(pose.pose.position.x)
             cy.append(pose.pose.position.y)
+
         self.goal = np.array([cx[0], cy[0]])
         self.plan_cx, self.plan_cy = np.array(cx), np.array(cy)
         self.plan_goal = np.array([cx[-1], cy[-1]])
         self.plan_x = np.array([0.0, 0.0, 0.0, self.vx, self.vw])
-        pass
 
 
     def planThreadFunc(self):
-        print("--- running local planning thread!! ---")
+        print("--- Running local planner thread ---")
 
         rr = rospy.Rate(10)
         self.need_exit = False
@@ -184,7 +215,8 @@ class LocalPlanner:
             self.planOnce()
 
             if self.goal_dis < self.arrive:
-                print("arrive goal!")
+                print("Arrived!")
+                self.need_exit = True
                 break
 
             # ------------------------------------
@@ -214,13 +246,11 @@ class LocalPlanner:
             #         self.vx = self.plan_config.max_speed / 5.0 * 4.0 
             # ------------------------------------
 
-
             rr.sleep()
 
-        print("exit planning thread!!")
-        self.publishVel(True)
+        print("--- Exit local planner thread ---")
+        self.publishVel(need_stop=True)
         self.planner_thread = None
-        pass
 
 
     def planOnce(self):
@@ -254,27 +284,28 @@ class LocalPlanner:
 
         # print("mdbg; ",u)
         self.publishVel()
-        pass
 
 
-    def publishVel(self, zero = False):
-        if zero:
+    def publishVel(self, need_stop=False):
+        if need_stop:
             self.vx = 0
             self.vw = 0
 
-        cmd = Twist()
-        cmd.linear.x = self.vx
-        cmd.angular.z = self.vw
-        self.vel_pub.publish(cmd)
+        # cmd = Twist()
+        # cmd.linear.x = self.vx
+        # cmd.angular.z = self.vw
+        # self.vel_pub.publish(cmd)
+
+        self.gazebo_sim.pub_cmd_vel([self.vx, self.vw])
 
 
 def main():
-    # rospy.init_node('path_Planning')
-    # lp = LocalPlanner()
-    # rospy.spin()
-    # pass
+    print('')
+    print('--- Local planner ---')
 
-    print('local planner')
+    rospy.init_node('path_Planning')
+    localPlanner = LocalPlanner()
+    rospy.spin()
 
 
 if __name__ == '__main__':

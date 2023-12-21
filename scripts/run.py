@@ -17,12 +17,13 @@ INIT_POSITION = [-2, 3, 1.57]  # in world frame
 GOAL_POSITION = [0, 10]  # relative to the initial position
 
 
-time_limit = 10.0  # 100.0
-print("time_limit = ", time_limit)
+time_limit = 100.0  # 100.0  # seconds
+print("time_limit = %f" % (time_limit))
 
 
 def compute_distance(p1, p2):
     return ((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2) ** 0.5
+
 
 def path_coord_to_gazebo_coord(x, y):
     RADIUS = 0.075
@@ -103,41 +104,43 @@ if __name__ == "__main__":
     # publish your final [control] through the topic /cmd_vel using : gazebo_sim.pub_cmd_vel([v, w])
     # if the [global map] is needed, read the map files, e.g. /jackal_helper/worlds/BARN/map_files/map_pgm_xxx.pgm
     
-    
-    # DWA example
-    launch_file = join(base_path, '..', 'jackal_helper/launch/move_base_DWA.launch')
-    # launch_file = join(base_path, '..', 'jackal_helper/launch/move_base_eband.launch')
-    # launch_file = join(base_path, '..', 'jackal_helper/launch/move_base_teb.launch')
-
-    nav_stack_process = subprocess.Popen([
-        'roslaunch',
-        launch_file,
-    ])
-    
-    # Make sure your navigation stack recives a goal of (0, 10, 0) 
-    # which is 10 meters away along postive y-axis.
-    import actionlib
-    # from geometry_msgs.msg import Quaternion
-    from move_base_msgs.msg import MoveBaseGoal, MoveBaseAction
-    nav_as = actionlib.SimpleActionClient('/move_base', MoveBaseAction)
-    mb_goal = MoveBaseGoal()
-    mb_goal.target_pose.header.frame_id = 'odom'
-    mb_goal.target_pose.pose.position.x = GOAL_POSITION[0]
-    mb_goal.target_pose.pose.position.y = GOAL_POSITION[1]
-    mb_goal.target_pose.pose.position.z = 0
-    mb_goal.target_pose.pose.orientation = Quaternion(0, 0, 0, 1)
-
-    nav_as.wait_for_server()
-    nav_as.send_goal(mb_goal)
-    
-
-    
-    # launch_file = join(base_path, '..', 'jackal_helper/launch/my_planner.launch')
+    # ---------------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------------
+    # # DWA example
+    # launch_file = join(base_path, '..', 'jackal_helper/launch/move_base_DWA.launch')
+    # # launch_file = join(base_path, '..', 'jackal_helper/launch/move_base_eband.launch')
+    # # launch_file = join(base_path, '..', 'jackal_helper/launch/move_base_teb.launch')
 
     # nav_stack_process = subprocess.Popen([
     #     'roslaunch',
     #     launch_file,
     # ])
+    
+    # # Make sure your navigation stack recives a goal of (0, 10, 0) 
+    # # which is 10 meters away along postive y-axis.
+    # import actionlib
+    # # from geometry_msgs.msg import Quaternion
+    # from move_base_msgs.msg import MoveBaseGoal, MoveBaseAction
+    # nav_as = actionlib.SimpleActionClient('/move_base', MoveBaseAction)
+    # mb_goal = MoveBaseGoal()
+    # mb_goal.target_pose.header.frame_id = 'odom'
+    # mb_goal.target_pose.pose.position.x = GOAL_POSITION[0]
+    # mb_goal.target_pose.pose.position.y = GOAL_POSITION[1]
+    # mb_goal.target_pose.pose.position.z = 0
+    # mb_goal.target_pose.pose.orientation = Quaternion(0, 0, 0, 1)
+
+    # nav_as.wait_for_server()
+    # nav_as.send_goal(mb_goal)
+    # ---------------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------------
+
+    
+    launch_file = join(base_path, '..', 'jackal_helper/launch/my_planner.launch')
+
+    nav_stack_process = subprocess.Popen([
+        'roslaunch',
+        launch_file,
+    ])
 
 
 
@@ -168,7 +171,7 @@ if __name__ == "__main__":
 
         pos = gazebo_sim.get_model_state().pose.position
         curr_coor = (pos.x, pos.y)
-        print("Time: %.2f (s), x: %.2f (m), y: %.2f (m)" % (curr_time - start_time, *curr_coor), end="\r")
+        print("Time: %.2f (s), x: %.2f (m), y: %.2f (m)" % (curr_time - start_time, *curr_coor), end="\n")  # "\r"
 
         collided = gazebo_sim.get_hard_collision()
 
@@ -210,4 +213,9 @@ if __name__ == "__main__":
         f.write("%d %d %d %d %.4f %.4f\n" %(args.world_idx, success, collided, (curr_time - start_time)>=time_limit, curr_time - start_time, nav_metric))
     
 
-    gazebo_process.terminate()
+    while True:
+        try:
+            time.sleep(1.0)
+        except KeyboardInterrupt:
+            gazebo_process.terminate()
+            break

@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 import rospy
 from nav_msgs.msg import OccupancyGrid
 from visualization_msgs.msg import Marker
@@ -68,12 +69,11 @@ def mapCallback(msg):
     for width in range(map.info.width):
         for height in range(map.info.height):
             value = map.data[height * map.info.width + width]
-            # if map_data[height][width] == 0:
             if value == 0:
-                # ox.append(width)
-                # oy.append(height)
-                plan_ox.append(width * map.info.resolution + map.info.origin.position.x)
-                plan_oy.append(height * map.info.resolution + map.info.origin.position.y)
+                ox = width * map.info.resolution + 0.5 * map.info.resolution + map.info.origin.position.x
+                oy = height * map.info.resolution + 0.5 * map.info.resolution + map.info.origin.position.y
+                plan_ox.append(ox)
+                plan_oy.append(oy)
 
 
     # plan_ox = (ox * map.info.resolution + map.info.origin.position.x).tolist()
@@ -87,7 +87,6 @@ def mapCallback(msg):
     triplePoints = []
     for i in range(len(plan_ox)):
         # print('Obstacle No. %d: (%f, %f)' % (i, plan_ox[i], plan_oy[i]))
-
         p = Point()
         p.x = plan_ox[i]
         p.y = plan_oy[i]

@@ -53,17 +53,14 @@ class Config:
 
         self.robot_type = RobotType.rectangle """
 
-
-
-
         # robot parameter
-        self.max_speed = 0.7  # [m/s]
+        self.max_speed = 0.7   # [m/s]
         self.min_speed = -0.7  # [m/s]
         self.max_yawrate = 200.0 * math.pi / 180.0  # [rad/s]
         self.max_accel = 0.4  # [m/ss]
         # self.max_dyawrate = 200.0 * math.pi / 180.0  # [rad/ss]
         # self.max_dyawrate =  2 * 200.0 * math.pi / 180.0  # [rad/ss]
-        self.max_dyawrate =  3 * 200.0 * math.pi / 180.0  # [rad/ss]
+        self.max_dyawrate = 3 * 200.0 * math.pi / 180.0  # [rad/ss]
 
 
         self.dt = 0.1  # [s] Time tick for motion prediction
@@ -78,14 +75,12 @@ class Config:
         self.robot_type = RobotType.rectangle
 
 
-
-
         # if robot_type == RobotType.circle
         # Also used to check if goal is reached in both types
-        self.robot_radius = 0.4  # [m] for collision check
+        self.robot_radius = 0.6  # [m] for collision check
 
         # if robot_type == RobotType.rectangle
-        self.robot_width = 0.4  # [m] for collision check
+        self.robot_width = 0.6  # [m] for collision check
         self.robot_length = 0.6  # [m] for collision check
 
     @property

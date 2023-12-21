@@ -2,35 +2,35 @@
 # -*- coding: utf-8 -*-
 
 import rospy
-import tf
-from nav_msgs.srv import GetMap
+# import tf
+# from nav_msgs.srv import GetMap
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
+from visualization_msgs.msg import Marker
+from geometry_msgs.msg import Point
 
 # from course_agv_nav.srv import Plan,PlanResponse
 # from jackal_helper.srv import Plan, PlanResponse
 
 from nav_msgs.msg import OccupancyGrid
-from std_msgs.msg import Bool
-import numpy as np
+# from std_msgs.msg import Bool
+# import numpy as np
 # import matplotlib.pyplot as plt
 # import pandas as pd
 import time
 
 
-############################################################
+# ========================================================
 # from a_star import AStarPlanner as Planner
 # from rrt_old_self_written import RRT as Planner
 # from use_rrt import Use_RRT as Planner
 from use_rrt_star import Use_RRTStar as Planner
-############################################################
+# ========================================================
 
 
 # from (ws)/src/scripts/run.py
 INIT_POSITION = [-2, 3, 1.57]  # in world frame
-# INIT_POSITION = [-3, 6, 1.57]  # in world frame
 GOAL_POSITION = [0, 10]  # relative to the initial position
-# GOAL_POSITION = [0, 0.5]  # relative to the initial position
 
 
 # ROBOT_TF_NAME = "/base_link"  # "/robot_base"
@@ -49,8 +49,8 @@ class GlobalPlanner:
         print('start position: (%f, %f)' % (self.plan_sx, self.plan_sy))
         print('goal position: (%f, %f)' % (self.plan_gx, self.plan_gy))
 
-        self.plan_grid_size = 0.1
-        self.plan_robot_radius = 0.2
+        self.plan_grid_size = 0.05
+        self.plan_robot_radius = 0.6
 
         # obstacles
         self.plan_ox = []  
@@ -60,6 +60,7 @@ class GlobalPlanner:
         self.plan_ry = []
 
         self.path = Path()
+        self.marker = Marker()
 
         # count to update map
         # self.map_count = 0
@@ -71,8 +72,13 @@ class GlobalPlanner:
         # self.goal_sub = rospy.Subscriber('/my_planner/goal', PoseStamped, self.goalCallback)
         # self.plan_srv = rospy.Service('/my_planner/global_plan', Plan, self.replan)
 
+
+        # ==============================================
         self.map_sub = rospy.Subscriber(MAP_TOPIC_NAME, OccupancyGrid, self.mapCallback)
-        self.path_pub = rospy.Publisher('/my_planner/global_path', Path, queue_size = 1)
+        self.path_pub = rospy.Publisher('/my_planner/global_path', Path, queue_size=10)
+        self.marker_pub = rospy.Publisher("/my_planner/waypoints", Marker, queue_size=10)
+        # ==============================================
+
         
         # self.collision_sub = rospy.Subscriber('/collision_checker_result', Bool, self.collisionCallback)
 
@@ -131,8 +137,7 @@ class GlobalPlanner:
         print('')
         ################################################
 
-        self.getPath()
-        self.publishPath()
+        self.getAndPubPath()
 
         # res = True
         # return PlanResponse(res)
@@ -173,31 +178,31 @@ class GlobalPlanner:
         # # ----------------------
         
 
-        self.plan_ox = []
-        self.plan_oy = []
-
         for width in range(self.map.info.width):
             for height in range(self.map.info.height):
                 value = self.map.data[height * self.map.info.width + width]
                 if value == 0:
-                    self.plan_ox.append(width * self.map.info.resolution + self.map.info.origin.position.x)
-                    self.plan_oy.append(height * self.map.info.resolution + self.map.info.origin.position.y)
+                    # obstacle
+                    ox = width * self.map.info.resolution + 0.5 * self.map.info.resolution + self.map.info.origin.position.x
+                    oy = height * self.map.info.resolution + 0.5 * self.map.info.resolution + self.map.info.origin.position.y
+                    self.plan_ox.append(ox)
+                    self.plan_oy.append(oy)
 
         ################################################
         self.planner = Planner(self.plan_ox, self.plan_oy, self.plan_grid_size, self.plan_robot_radius)
         ################################################
 
 
-    # get self.path
-    def getPath(self):
+    def getAndPubPath(self):
         # print('--- Getting global path ---')
 
-        # path = Path()
         self.path.header.seq = 0
         self.path.header.stamp = rospy.Time(0)
         self.path.header.frame_id = 'map'
 
+        wayPoints = []
         for i in range(len(self.plan_rx)):
+            # path
             pose = PoseStamped()
             pose.header.seq = i
             pose.header.stamp = rospy.Time(0)
@@ -212,10 +217,38 @@ class GlobalPlanner:
 
             self.path.poses.append(pose)
 
+            # way points
+            p = Point()
+            p.x = self.plan_rx[i]
+            p.y = self.plan_ry[i]
+            p.z = 0
+            wayPoints.append(p) 
 
-    def publishPath(self):
+        # marker of way points
+        self.marker.header.frame_id = "/map"
+        self.marker.type = self.marker.POINTS
+        self.marker.action = self.marker.ADD
+        # self.marker.pose.orientation.w = 1
+
+        self.marker.points = wayPoints
+        # t = rospy.Duration()
+        # self.marker.lifetime = t
+        self.marker.scale.x = 0.2
+        self.marker.scale.y = 0.2
+        self.marker.scale.z = 0.2
+        self.marker.color.a = 1.0
+        self.marker.color.r = 1.0
+    
+
+        rate = rospy.Rate(1) # Hz
+        while not rospy.is_shutdown():
+            self.publish()
+            rate.sleep()
+
+
+    def publish(self):
         self.path_pub.publish(self.path)
-
+        self.marker_pub.publish(self.marker)
 
 
 def main():
@@ -223,15 +256,8 @@ def main():
     print('--- Global planner ---')
 
     rospy.init_node('my_global_planner', anonymous = True)
-
     globalPlanner = GlobalPlanner()
-    rate = rospy.Rate(1) # Hz
-
-    while not rospy.is_shutdown():
-        globalPlanner.publishPath()
-        rate.sleep()
-
-    # rospy.spin()
+    rospy.spin()
 
 
 if __name__ == '__main__':
