@@ -181,7 +181,8 @@ class GlobalPlanner:
         for width in range(self.map.info.width):
             for height in range(self.map.info.height):
                 value = self.map.data[height * self.map.info.width + width]
-                if value == 0:
+                # if value == 0:
+                if value == 100:
                     # obstacle
                     ox = width * self.map.info.resolution + 0.5 * self.map.info.resolution + self.map.info.origin.position.x
                     oy = height * self.map.info.resolution + 0.5 * self.map.info.resolution + self.map.info.origin.position.y
@@ -225,7 +226,7 @@ class GlobalPlanner:
             wayPoints.append(p) 
 
         # marker of way points
-        self.marker.header.frame_id = "/map"
+        self.marker.header.frame_id = '/map'
         self.marker.type = self.marker.POINTS
         self.marker.action = self.marker.ADD
         # self.marker.pose.orientation.w = 1

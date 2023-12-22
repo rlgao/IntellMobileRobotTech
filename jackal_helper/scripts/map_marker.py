@@ -69,7 +69,8 @@ def mapCallback(msg):
     for width in range(map.info.width):
         for height in range(map.info.height):
             value = map.data[height * map.info.width + width]
-            if value == 0:
+            # if value == 0:
+            if value == 100:
                 ox = width * map.info.resolution + 0.5 * map.info.resolution + map.info.origin.position.x
                 oy = height * map.info.resolution + 0.5 * map.info.resolution + map.info.origin.position.y
                 plan_ox.append(ox)

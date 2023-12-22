@@ -19,6 +19,7 @@ find_package(catkin REQUIRED COMPONENTS
     geometry_msgs
     nav_msgs
     message_generation
+    tf
 )
 
 include(FindBoost)
@@ -64,10 +65,10 @@ find_package(Protobuf REQUIRED)
 #generate_messages(DEPENDENCIES std_msgs)
 
 ## Generate services in the 'srv' folder
-add_service_files(
-  FILES
-  Plan.srv
-)
+# add_service_files(
+#   FILES
+#   Plan.srv
+# )
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -80,6 +81,13 @@ add_service_files(
 generate_messages(
   DEPENDENCIES
   std_msgs
+  # rospy
+  # roscpp
+  # std_msgs
+  # geometry_msgs
+  # nav_msgs
+  # message_generation
+  # tf
 )
 
 ################################################
@@ -117,6 +125,13 @@ catkin_package(
 #  CATKIN_DEPENDS roscpp std_msgs
 #  DEPENDS system_lib
     CATKIN_DEPENDS gazebo_msgs message_runtime
+    # rospy
+    # roscpp
+    # std_msgs
+    # geometry_msgs
+    # nav_msgs
+    # message_generation
+    # tf
 )
 
 ###########

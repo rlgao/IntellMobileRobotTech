@@ -1,7 +1,5 @@
-# image: map/map.png
 # image: /home/grl/barn_ws/src/jackal_helper/worlds/BARN/map_files/map_pgm_0.pgm
 image: maps/map_pgm_50.pgm
-
 resolution: 0.15
 origin: [-4.5, 0.0, 0.0]
 occupied_thresh: 0.65

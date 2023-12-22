@@ -1,15 +1,19 @@
 <launch>
-  <!-- Start the navigation stack -->
+  <arg name="use_sim_time" default="true" />
 
   <!-- Map server to read the given global map -->
-  <arg name="map_cfg" default="$(find jackal_helper)/configs/map.yaml"/>
-  <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_cfg)"/>
+  <arg name="map_idx" default="50"/>
+  <arg name="map_config_file" default="$(find jackal_helper)/configs/maps/yaml_$(arg map_idx).yaml"/>
+  <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_config_file)"/>
 
   <!-- Global planner -->
-  <node pkg="jackal_helper" type="global_planner.py" name="global_planner" ns="my_planner"  output="screen"/>
+  <node pkg="jackal_helper" type="global_planner.py" name="global_planner" output="screen"/>
 
   <!-- Local planner -->
-  <node pkg="jackal_helper" type="local_planner.py"  name="local_planner"  ns="my_planner"  output="screen"/>
+  <node pkg="jackal_helper" type="local_planner.py"  name="local_planner" output="screen"/>
+
+  <!-- TF -->
+  <node pkg="jackal_helper" type="robot_tf2_broadcast.py"  name="robot_tf2_broadcast" output="screen"/>
 
   <!-- RViz -->
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find jackal_helper)/launch/viz.rviz" />

@@ -136,10 +136,12 @@ if __name__ == "__main__":
 
     
     launch_file = join(base_path, '..', 'jackal_helper/launch/my_planner.launch')
+    map_idx = "%d" % (args.world_idx)
 
     nav_stack_process = subprocess.Popen([
         'roslaunch',
         launch_file,
+        'map_idx:=' + map_idx
     ])
 
 
@@ -171,7 +173,7 @@ if __name__ == "__main__":
 
         pos = gazebo_sim.get_model_state().pose.position
         curr_coor = (pos.x, pos.y)
-        print("Time: %.2f (s), x: %.2f (m), y: %.2f (m)" % (curr_time - start_time, *curr_coor), end="\n")  # "\r"
+        print("Time: %.2f (s), x: %.2f (m), y: %.2f (m)" % (curr_time - start_time, *curr_coor), end="\r")  # "\r"
 
         collided = gazebo_sim.get_hard_collision()
 
