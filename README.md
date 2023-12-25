@@ -6,7 +6,7 @@
 
 ```bash
 cd ~/barn_ws
-source devel.setup.bash
+source devel/setup.bash
 python3 src/scripts/run.py --gui --world_idx xx
 ```
 

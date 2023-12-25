@@ -5,7 +5,9 @@ import math
 import numpy as np
 from enum import Enum
 from sklearn import preprocessing  # for minmax_scale
+
 import random
+from colorama import Fore, Back, Style
 
 
 class RobotType(Enum):
@@ -19,11 +21,11 @@ class Config:
     """
     def __init__(self):
         # robot parameters
-        self.max_speed    = 0.75   # [m/s]
+        self.max_speed    = 0.65   # [m/s]
         self.min_speed    = 0.0  # [m/s]
         self.max_yawrate  = 120.0 * math.pi / 180.0  # [rad/s]
-        self.max_accel    = 0.4  # [m/ss]
-        self.max_dyawrate = 200.0 * math.pi / 180.0  # [rad/ss]
+        self.max_accel    = 1.0  # [m/ss]
+        self.max_dyawrate = 100.0 * math.pi / 180.0  # [rad/ss]
 
         self.dt           = 0.1  # [s] Time tick for motion prediction
         self.v_reso       = self.max_accel * self.dt / 10.0    # [m/s]
@@ -32,13 +34,13 @@ class Config:
 
         self.goal_cost_gain  = 1.0
         self.speed_cost_gain = 0.4
-        self.ob_cost_gain    = 0.4
+        self.ob_cost_gain    = 0.5
 
         self.robot_type = RobotType.rectangle
 
         # if robot_type == RobotType.circle
         # Also used to check if goal is reached in both types
-        self.robot_radius = 0.32  # [m] for collision check
+        self.robot_radius = 0.3  # [m] for collision check
         # if robot_type == RobotType.rectangle
         # self.robot_width  = 0.6  # [m] for collision check
         # self.robot_length = 0.6  # [m] for collision check
@@ -205,19 +207,21 @@ def calc_best_input(x, u, dw, config, goal, ob):
         # print('best_index = ' + str(best_index))
         # print('min_u = ' + str(min_u))
         # print('best_traj = ' + str(best_traj))
-
+        
+    # ----------------------------------------------------------
     if abs(min_u[0]) < config.robot_stuck_flag_cons and abs(x[3]) < config.robot_stuck_flag_cons:
         # to ensure the robot do not get stuck in
         # best v=0 m/s (in front of an obstacle) and
         # best omega=0 rad/s (heading to the goal with
         # angle difference of 0)
         
-        min_u[1] = -config.max_yawrate / 2.0
+        min_u[1] = -config.max_yawrate / 4.0
         # rand_01 = random.uniform(0, 1)
         # if rand_01 > 0.5:
         #     min_u[1] = config.max_yawrate
         # else:
         #     min_u[1] = -config.max_yawrate
+    # ----------------------------------------------------------
 
 
     return min_u, best_traj
@@ -254,16 +258,19 @@ def calc_obstacle_cost(traj, ob, config):
             dy = traj[ii, 1] - oy
             r = math.sqrt(dx ** 2 + dy ** 2)
 
-            r1 = r - config.robot_radius
-            if r1 <= 0:
-                return float("inf")  # collision
-
-            # -------------------------------
+            # --------------------------------------------------------------
+            # collision
             # if r <= config.robot_radius + config.obstacle_radius:
             #     return float("inf")  # collision
             # if r <= config.robot_length:
             #     return float("inf")  # collision
-            # -------------------------------
+
+            r1 = r - config.robot_radius
+            if r1 <= 0:
+                # print(Fore.RED + Back.GREEN + 'r: %.2f' % (r))
+                # print(Style.RESET_ALL)
+                return float("inf")  # collision
+            # --------------------------------------------------------------
 
             if r < min_r:
                 min_r = r

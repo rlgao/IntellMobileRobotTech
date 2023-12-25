@@ -26,10 +26,11 @@ class Use_RRTStar:
     def plan(self, plan_sx, plan_sy, plan_gx, plan_gy):
         # dimensions of Search Space
         # X_dimensions = np.array([(x_lower, x_upper), (y_lower, y_upper)])
-
+        # INIT_POSITION = [-2, 3, 1.57]  # in world frame
         # X_dimensions = np.array([(0, 100), (0, 100)])
         # X_dimensions = np.array([(-10.0, 10.0), (-10.0, 10.0)])
-        X_dimensions = np.array([(-5.0, 5.0), (-5.0, 15.0)])
+        # X_dimensions = np.array([(-4.6, 0.1), (2.5, 10.5)])
+        X_dimensions = np.array([(-4.6, 0.1), (2.9, 10.1)])
 
 
         Obstacles = []
@@ -52,7 +53,7 @@ class Use_RRTStar:
         Q = np.array([(step_size, 4)])
 
         # max number of samples to take before timing out
-        max_samples = 2048
+        max_samples = 4096  # 2048
 
         # resolution of points to sample along edge when checking for collisions
         r = self.plan_grid_size  #1  # length of smallest edge to check for intersection with obstacles

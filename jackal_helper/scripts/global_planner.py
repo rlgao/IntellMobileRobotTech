@@ -33,7 +33,7 @@ class GlobalPlanner:
         # tunable params
         self.plan_grid_size = 0.2
         self.plan_robot_radius = 0.6  # useless
-        self.ob_size = 0.33
+        self.ob_size = 0.4
         # ==============================================
 
         # obstacles
@@ -104,6 +104,7 @@ class GlobalPlanner:
         wayPoints = []
         for i in range(len(self.plan_rx)):
 
+            # remove all the way points except the final goal
             # if i < len(self.plan_rx) - 1:
             #     continue
 

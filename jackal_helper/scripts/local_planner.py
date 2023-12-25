@@ -47,7 +47,7 @@ class LocalPlanner:
         self.dwa = dwa.DWA(self.plan_config)
         c = self.plan_config
 
-        self.arrive = 0.45
+        self.arrive = 0.49
         self.ob_thresh = 1.2  # float("inf")  # 1.0
         # ==============================================
 
