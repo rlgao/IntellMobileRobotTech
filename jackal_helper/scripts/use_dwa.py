@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*-
 
 import math
-from enum import Enum
-
 import numpy as np
-
+from enum import Enum
 from sklearn import preprocessing  # for minmax_scale
+import random
+
 
 class RobotType(Enum):
     circle = 0
@@ -18,70 +18,34 @@ class Config:
     simulation parameter class
     """
     def __init__(self):
-        """ # robot parameter
+        # robot parameters
+        self.max_speed    = 0.75   # [m/s]
+        self.min_speed    = 0.0  # [m/s]
+        self.max_yawrate  = 120.0 * math.pi / 180.0  # [rad/s]
+        self.max_accel    = 0.4  # [m/ss]
+        self.max_dyawrate = 200.0 * math.pi / 180.0  # [rad/ss]
 
-        # -----------------------------------
-        # self.max_speed = 0.7  # [m/s]
-        # self.max_speed = 0.4  # [m/s]
-        # self.min_speed = -self.max_speed  # [m/s]
-        self.max_speed = 0.5  #2.0
-        self.min_speed = 0.0
+        self.dt           = 0.1  # [s] Time tick for motion prediction
+        self.v_reso       = self.max_accel * self.dt / 10.0    # [m/s]
+        self.yawrate_reso = self.max_dyawrate * self.dt / 10.0 # [rad/s]
+        self.predict_time = 2.0  # [s]
 
-        # self.max_yawrate = 200.0 * math.pi / 180.0  # [rad/s]
-        self.max_yawrate = 60.0 * math.pi / 180.0  # [rad/s]
-        # self.max_yawrate = math.pi / 3 * 2  # [rad/s]
-        # -----------------------------------
-
-        # self.max_accel = 0.4  # [m/ss]
-        self.max_accel = 0.7  # [m/ss]
-        # self.max_dyawrate = 200.0 * math.pi / 180.0  # [rad/ss]
-        self.max_dyawrate = math.pi / 3 * 5  # [rad/ss]
-
-        self.dt = 0.1  # [s] Time tick for motion prediction
-        # self.v_reso = self.max_accel * self.dt / 10.0  # [m/s]
-        self.v_reso = 0.01  # [m/s]
-        self.yawrate_reso = 0.1  # [rad/s]
-        # self.predict_time = 2  # [s]
-        self.predict_time = 1.0  # [s]
-        
-        # -----------------------------------------
-        self.to_goal_cost_gain = 0.6  #0.4  #0.6  #1.0
-        self.speed_cost_gain = 0.7  #0.8  #0.7  #0.1
-        self.obstacle_cost_gain = 0.3  #1.0
-        self.ob_gain = self.obstacle_cost_gain  ######
-        # -----------------------------------------
-
-        self.robot_type = RobotType.rectangle """
-
-        # robot parameter
-        self.max_speed = 0.7   # [m/s]
-        self.min_speed = -0.7  # [m/s]
-        self.max_yawrate = 200.0 * math.pi / 180.0  # [rad/s]
-        self.max_accel = 0.4  # [m/ss]
-        # self.max_dyawrate = 200.0 * math.pi / 180.0  # [rad/ss]
-        # self.max_dyawrate =  2 * 200.0 * math.pi / 180.0  # [rad/ss]
-        self.max_dyawrate = 3 * 200.0 * math.pi / 180.0  # [rad/ss]
-
-
-        self.dt = 0.1  # [s] Time tick for motion prediction
-        self.v_reso = self.max_accel*self.dt/10.0  # [m/s]
-        self.yawrate_reso = self.max_dyawrate*self.dt/10.0  # [rad/s]
-        self.predict_time = 2  # [s]
-
-        self.to_goal_cost_gain = 0.8  #0.6  #0.4  #0.6  #1.0
-        self.speed_cost_gain = 0.2  #0.8  #0.7  #0.1
-        self.obstacle_cost_gain = 0.3  #0.2  #1.0
+        self.goal_cost_gain  = 1.0
+        self.speed_cost_gain = 0.4
+        self.ob_cost_gain    = 0.4
 
         self.robot_type = RobotType.rectangle
 
-
         # if robot_type == RobotType.circle
         # Also used to check if goal is reached in both types
-        self.robot_radius = 0.6  # [m] for collision check
-
+        self.robot_radius = 0.32  # [m] for collision check
         # if robot_type == RobotType.rectangle
-        self.robot_width = 0.6  # [m] for collision check
-        self.robot_length = 0.6  # [m] for collision check
+        # self.robot_width  = 0.6  # [m] for collision check
+        # self.robot_length = 0.6  # [m] for collision check
+
+        # self.obstacle_radius = 0.05
+        self.robot_stuck_flag_cons = 0.001  # constant to prevent robot stucked
+
 
     @property
     def robot_type(self):
@@ -105,11 +69,11 @@ def motion(x, u, dt):
 
     # x'
     x[0] = x[0] - u[0] / u[1] * math.sin(x[2]) \
-         + u[0] / u[1] * math.sin(x[2] + u[1] * dt)
+                + u[0] / u[1] * math.sin(x[2] + u[1] * dt)
 
     # y'
     x[1] = x[1] + u[0] / u[1] * math.cos(x[2]) \
-         - u[0] / u[1] * math.cos(x[2] + u[1] * dt)   
+                - u[0] / u[1] * math.cos(x[2] + u[1] * dt)   
 
     x[2] += u[1] * dt  # theta'
 
@@ -137,6 +101,8 @@ def calc_dynamic_window(x, config):
     dw = [max(Vs[0], Vd[0]), min(Vs[1], Vd[1]),
           max(Vs[2], Vd[2]), min(Vs[3], Vd[3])]
 
+    # print('x')
+    # print(x)
     # print('dw:')
     # print(dw)
 
@@ -163,9 +129,9 @@ def calc_best_input(x, u, dw, config, goal, ob):
 
     xinit = x[:]
 
-    min_cost = 10000.0
+    # min_cost = 10000.0
     min_u = u
-    # min_u[0] = 0.0
+    min_u[0] = 0.0
 
     best_traj = np.array([x])
 
@@ -184,7 +150,6 @@ def calc_best_input(x, u, dw, config, goal, ob):
 
             # print('sample traj = ')
             # print(traj)
-
 
             ########## calc costs ##########
             to_goal_cost = calc_to_goal_cost(traj, goal, config)
@@ -225,14 +190,13 @@ def calc_best_input(x, u, dw, config, goal, ob):
         # cost_list[:, 0] /= sum(cost_list[:, 0])
         # cost_list[:, 1] /= sum(cost_list[:, 1])
         # cost_list[:, 2] /= sum(cost_list[:, 2])
-        cost_sum = cost_list[:, 0] * config.to_goal_cost_gain \
+        cost_sum = cost_list[:, 0] * config.goal_cost_gain \
                  + cost_list[:, 1] * config.speed_cost_gain   \
-                 + cost_list[:, 2] * config.obstacle_cost_gain  #config.ob_gain
+                 + cost_list[:, 2] * config.ob_cost_gain
         cost_sum = cost_sum.tolist()
 
         # print('cost_sum =')
         # print(cost_sum)
-
 
         best_index = cost_sum.index(min(cost_sum))
         min_u = u_list[best_index]
@@ -242,9 +206,21 @@ def calc_best_input(x, u, dw, config, goal, ob):
         # print('min_u = ' + str(min_u))
         # print('best_traj = ' + str(best_traj))
 
+    if abs(min_u[0]) < config.robot_stuck_flag_cons and abs(x[3]) < config.robot_stuck_flag_cons:
+        # to ensure the robot do not get stuck in
+        # best v=0 m/s (in front of an obstacle) and
+        # best omega=0 rad/s (heading to the goal with
+        # angle difference of 0)
+        
+        min_u[1] = -config.max_yawrate / 2.0
+        # rand_01 = random.uniform(0, 1)
+        # if rand_01 > 0.5:
+        #     min_u[1] = config.max_yawrate
+        # else:
+        #     min_u[1] = -config.max_yawrate
+
 
     return min_u, best_traj
-
 
 
 def calc_obstacle_cost(traj, ob, config):
@@ -261,10 +237,10 @@ def calc_obstacle_cost(traj, ob, config):
     #     return np.array(filtered_ob_list)
     # ob = filter_ob(ob.tolist(), traj[0], 5.0)
 
-
     skip_n = 1
-    minr = float("inf")
+    min_r = float("inf")
 
+    # no obstacles around
     if ob is None:
         return 0
     if len(ob) is 0:
@@ -276,25 +252,28 @@ def calc_obstacle_cost(traj, ob, config):
             oy = ob[i, 1]
             dx = traj[ii, 0] - ox
             dy = traj[ii, 1] - oy
-            r = math.sqrt(dx**2 + dy**2)
+            r = math.sqrt(dx ** 2 + dy ** 2)
+
+            r1 = r - config.robot_radius
+            if r1 <= 0:
+                return float("inf")  # collision
 
             # -------------------------------
             # if r <= config.robot_radius + config.obstacle_radius:
-            #     return float("Inf")  # collision
+            #     return float("inf")  # collision
             # if r <= config.robot_length:
-            #     return float("Inf")  # collision
+            #     return float("inf")  # collision
             # -------------------------------
 
-            if minr >= r:
-                minr = r
+            if r < min_r:
+                min_r = r
 
+    # print('min_r = ' + str(min_r))
 
-    # print('minr = ' + str(minr))
-
-    # return 1.0 / abs(minr - config.robot_radius - config.obstacle_radius)  # OK
-    # return 1.0 / abs(minr - config.robot_length)  # OK
-    # return 1.0 / abs(minr)  # OK
-    return 2.0 - abs(minr)  # OK
+    # return 1.0 / abs(min_r - config.robot_radius - config.obstacle_radius)
+    # return 1.0 / abs(min_r - config.robot_length) 
+    # return 1.0 / min_r 
+    return 10.0 - min_r 
 
 
 def calc_to_goal_cost(traj, goal, config):
@@ -313,7 +292,7 @@ def calc_to_goal_cost(traj, goal, config):
     # dot_product = (goal[0] * traj[-1, 0]) + (goal[1] * traj[-1, 1])
     # error = dot_product / (goal_magnitude * traj_magnitude)
     # error_angle = math.acos(error)
-    # cost = config.to_goal_cost_gain * error_angle
+    # cost = config.goal_cost_gain * error_angle
     # mid_point = int(round(config.predict_time/config.dt/2))
 
     # mid_point = 4
@@ -323,12 +302,10 @@ def calc_to_goal_cost(traj, goal, config):
     traj_angle = traj[mid_point, 2]  # theta
     error_angle = abs(normalize_angle(goal_line_angle-traj_angle))
 
-    # cost = config.to_goal_cost_gain * error_angle
+    # cost = config.goal_cost_gain * error_angle
     cost = error_angle  ######
 
     return cost
-
-
 
 
 class DWA:
@@ -343,20 +320,11 @@ class DWA:
         """
         ##TODO
 
-        # trajectory = None
-        # vx = 0.5  #0.5
-        # vw = -0.25  #1.0
-        # u = [vx, vw]
-
-
         config = self.config
 
         dw = calc_dynamic_window(x, config)
 
         u = [x[3], x[4]]
-        u, trajectory = calc_best_input(x, u, dw, config, goal, ob)
+        u, traj = calc_best_input(x, u, dw, config, goal, ob)
 
-        # if abs(u[1]) > 1.0:
-        #     u[0] = 0.0
-
-        return u, trajectory
+        return u, traj

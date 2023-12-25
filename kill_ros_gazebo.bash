@@ -20,4 +20,3 @@ echo -e ${GREEN}"After kill:"
 ps -ef | grep gazebo
 ps -ef | grep ros
 ps -ef | grep 'python3 src/scripts/run.py'
-

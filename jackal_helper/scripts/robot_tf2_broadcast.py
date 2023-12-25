@@ -33,7 +33,7 @@ class MyTfBroadcaster:
 
             t.transform.translation.x = pos.x
             t.transform.translation.y = pos.y
-            t.transform.translation.z = 0.0
+            t.transform.translation.z = pos.z  # 0.0
 
             t.transform.rotation.x = ori.x
             t.transform.rotation.y = ori.y

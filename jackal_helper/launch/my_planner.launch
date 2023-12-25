@@ -13,7 +13,7 @@
   <node pkg="jackal_helper" type="local_planner.py"  name="local_planner" output="screen"/>
 
   <!-- TF -->
-  <node pkg="jackal_helper" type="robot_tf2_broadcast.py"  name="robot_tf2_broadcast" output="screen"/>
+  <node pkg="jackal_helper" type="robot_tf2_broadcast.py" name="robot_tf2_broadcast" output="screen"/>
 
   <!-- RViz -->
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find jackal_helper)/launch/viz.rviz" />

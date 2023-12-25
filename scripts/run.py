@@ -12,6 +12,8 @@ from geometry_msgs.msg import Quaternion
 from geometry_msgs.msg import Twist
 from gazebo_simulation import GazeboSimulation
 
+from colorama import Fore, Back, Style
+
 
 INIT_POSITION = [-2, 3, 1.57]  # in world frame
 GOAL_POSITION = [0, 10]  # relative to the initial position
@@ -209,7 +211,8 @@ if __name__ == "__main__":
     optimal_time = path_length / 2
     actual_time = curr_time - start_time
     nav_metric = int(success) * optimal_time / np.clip(actual_time, 4 * optimal_time, 8 * optimal_time)
-    print("Navigation metric: %.4f" %(nav_metric))
+    print(Fore.RED + Back.GREEN + "Navigation metric: %.4f" %(nav_metric))
+    print(Style.RESET_ALL)
     
     with open(args.out, "a") as f:
         f.write("%d %d %d %d %.4f %.4f\n" %(args.world_idx, success, collided, (curr_time - start_time)>=time_limit, curr_time - start_time, nav_metric))

@@ -12,32 +12,32 @@ from src.search_space.search_space import SearchSpace
 
 
 class Use_RRTStar:
-    def __init__(self, plan_ox, plan_oy, plan_grid_size, plan_robot_radius):
+    def __init__(self, plan_ox, plan_oy, plan_grid_size, plan_robot_radius, ob_size):
         print('===  Using RRTStar  ===')
 
         self.plan_ox = plan_ox  # list of x of obstacles
         self.plan_oy = plan_oy  # list of y of obstacles
 
-        self.plan_grid_size    = plan_grid_size     # 0.3
-        self.plan_robot_radius = plan_robot_radius  # 0.8
+        self.plan_grid_size    = plan_grid_size
+        self.plan_robot_radius = plan_robot_radius  # useless
+        self.ob_size           = ob_size
 
 
     def plan(self, plan_sx, plan_sy, plan_gx, plan_gy):
         # dimensions of Search Space
+        # X_dimensions = np.array([(x_lower, x_upper), (y_lower, y_upper)])
+
         # X_dimensions = np.array([(0, 100), (0, 100)])
-        X_dimensions = np.array([(-10.0, 10.0), (-10.0, 10.0)])
+        # X_dimensions = np.array([(-10.0, 10.0), (-10.0, 10.0)])
+        X_dimensions = np.array([(-5.0, 5.0), (-5.0, 15.0)])
+
 
         Obstacles = []
-        #######################
-        ob_size = 0.2
-        #######################
-        
+        ob_size = self.ob_size
         for i in range(len(self.plan_ox)):
             Obstacles.append((self.plan_ox[i] - ob_size, self.plan_oy[i] - ob_size,
                               self.plan_ox[i] + ob_size, self.plan_oy[i] + ob_size))
-
         Obstacles = np.array(Obstacles)
-
 
         # create search space
         X = SearchSpace(X_dimensions, Obstacles)
@@ -51,9 +51,7 @@ class Use_RRTStar:
         step_size = 1  #0.7  #######################
         Q = np.array([(step_size, 4)])
 
-
         # max number of samples to take before timing out
-        # max_samples = 1024  
         max_samples = 2048
 
         # resolution of points to sample along edge when checking for collisions
@@ -71,12 +69,9 @@ class Use_RRTStar:
         path = rrt_star.rrt_star_search()
         # ===================================================
 
-
         print('Global path points:')
         for path_point in path:
             print(path_point)
-
-
 
         plan_rx = []
         plan_ry = []
@@ -85,4 +80,3 @@ class Use_RRTStar:
             plan_ry.append(path_point[1])
 
         return plan_rx, plan_ry
-

@@ -18,7 +18,7 @@ class SearchSpace(object):
         # sanity check
         if len(dimension_lengths) < 2:
             raise Exception("Must have at least 2 dimensions")
-        self.dimensions = len(dimension_lengths)  # number of dimensions
+        self.dimensions = len(dimension_lengths)  # number of dimensions, 2
 
         # sanity checks
         if any(len(i) != 2 for i in dimension_lengths):
@@ -77,6 +77,7 @@ class SearchSpace(object):
         """
         x = np.random.uniform(self.dimension_lengths[:, 0], self.dimension_lengths[:, 1])
         return tuple(x)
+    
 
     def sample_free(self):
         """
