@@ -158,6 +158,8 @@ def main():
     print('')
     print('--- Global planner ---')
 
+    time.sleep(3)
+
     rospy.init_node('my_global_planner', anonymous = True)
     globalPlanner = GlobalPlanner()
     rospy.spin()
